@@ -21,14 +21,14 @@ def piecewiseFunc(bkpt, avg):   #constructor for piecewise function returns np.p
     return why #np.piecewise(x, bkpt_bool, horz)
 
 
-def piecewise_linearRegress(data, pen=10, min_size=300):
+def piecewise_linearRegress(data, pen=3, min_size=10):
     
-    pen = 10
-    min_size = 300
+    _pen = pen
+    _min_size = min_size
     
     #data = data / data[data.argmax()]
     
-    def data_bkps(data, pen=pen, min_size=min_size): 
+    def data_bkps(data, pen=_pen, min_size=_min_size): 
         '''PELT search method for offline changepoint search analysis.
         This function takes in a continuous sequence of data and
         through the minimization of a cost function identifies changepoints:
@@ -70,7 +70,8 @@ def piecewise_linearRegress(data, pen=10, min_size=300):
         
         mu = mean(data, int(bkps[i-1]), int(bkps[i]))
         DataMean[i] = mu
-        print(i-1,i,mu)
+        #(bkps[i-1],bkps[i],mu)
+    print(DataMean)
     #return slp, interc
     return DataMean, bkps
 
