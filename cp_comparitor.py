@@ -78,11 +78,51 @@ def piecewise_linearRegress(data, pen=3, min_size=10):
 
     
 
-def cpCorrelation(cpComparitee, cpComparitor):
+def cpCorrelation(cpComparitee, cpComparitor, **kwargs):
+    
+    '''Correlation engine for changepoint associations:
+    takes in two vectors (m x n) of changepoints/trends. One compariTEE who is compared to the compariTOR.
+    
+    Relative changepoint (vector[0]) and corresponding trend values (vector[1:]) 
+    
+    
+    Uses a kwarg to choose the geometric comparitor operation:
+    
+    operator= 
+    'cosine'
+    'euclidean'
+    'theta'
+    'triangle'
+    'sector'
+    'mag'
+
+
+    Builds output of change points that correspond to all remaining changepoints after the matching input vector. 
+    '''
+
+    #for key, value in kwargs.items():
+        #print(f"{key}: {value}")
+
     tee = cpCompConstructor(cpComparitee)
     tor = cpCompConstructor(cpComparitor)
+    
+    opFunc_dict = {'cosine':Cosine, 'euclidean': Euclidean, 'theta': Theta, 'triangle': Triangle, 'sector': Sector, 'magnitude': Magnitude_Difference} 
+    _operator = kwargs.get('operator')
+    
+    _threshold = kwargs.get('thresh')
+
+
+    operator = opFunc_dict[_operator]
+
     QumeProb = np.array([])
     k = 1
+    '''    
+    cos_thresh = 0.99999 # match is 1.0 (very tight threshhold, all reasonalble values are very close to 1.0)
+    euclidean_thresh = 0.1 # match is near zero
+    theta_thresh = 0.1745 # match is .1745
+    triangle_thresh = 0.2 # match is near zero
+    sector_thresh = 0.1 # match is near zero
+    '''
     
     for i in range(1,len(tee)):
         for j in range(1,len(tor)):
@@ -90,8 +130,8 @@ def cpCorrelation(cpComparitee, cpComparitor):
             #print(tor[j][1],tor[j][2])
             #print(tee[i][1],tee[i][2])
             #if tor[j][1] == tee[i][1] and tor[j][2] == tee[i][2]:
-            if Cosine(tor[j][1:], tee[i][1:]) >= 0.9999:
-                print('*****MATCH' + str(Cosine(tor[j][1:], tee[i][1:])))
+            if operator(tor[j][1:], tee[i][1:]) >= _threshold:
+                print('*****MATCH' + str(operator(tor[j][1:], tee[i][1:])))
                 probAdd = np.diff(tor.T[0])
                 #print(tor[i][1],tor[i][2])
                 #print(tee[j][1],tee[j][2])
@@ -101,7 +141,7 @@ def cpCorrelation(cpComparitee, cpComparitor):
                     #print(tor[j][0]+np.sum(probAdd[q:]))
                     #QumeProb = np.append(QumeProb, (tor[j][0]+np.sum(probAdd[q:])))
                     QumeProb = np.append(QumeProb, (tee[i][0]+np.sum(probAdd[q:])))
-                    k = k+1
+                    k = k+1 # this counter is a placeholder for, not currently used.
             #print('no match')
     #unique, counts = np.unique(CumulativeProb, return_counts=True)
     
@@ -116,7 +156,9 @@ def cpCorrelation(cpComparitee, cpComparitor):
     
     return V
 
-def cpCompConstructor(cpWell): # Creates a ChangePoint length Rows by 3 columns matrix that will be used to compare sequentially 
+def cpCompConstructor(cpWell):
+    '''Creates a ChangePoint input 'length' of Rows by 3 columns matrix 
+    that will be used to compare sequentially to another changepoint matix'''
     
     cpBLNK = cpWell
     
@@ -151,14 +193,41 @@ def combine_vectors_to_matrix_(*vectors):
     return matrix
 
 
-#Cosine Similarity *** does not take magnitude into account***
+'''Glossary:
+    Comparitor_vector = base known data that is the foundational knowledge
+    
+    Comparitee_vector = New data that is the question you "ask" the comparitor'''
+
+def spearman_offset(comparitee_vector, comparitor_vector, **kwargs):
+    _window = kwargs.get('window')
+    stat = []
+    pvalue = []
+    tee = comparitee_vector
+    tor = comparitor_vector
+
+    if len(tor)<len(tee[:_window]):
+        print("Comparitor is shorter than comparitee, this won't do, try a shorter sequence") 
+    else:
+        for i in range(len(tor)-len(tee)):
+            SigRes = (stats.spearmanr(tor[i:i+_window],tee[:_window]))
+            stat.append(SigRes.statistic)
+            pvalue.append(SigRes.pvalue)
+        statAray = np.array(stat)
+        statAray = np.nan_to_num(statAray, nan=0.0)
+        
+        pvalueAray = np.array(pvalue)
+        pvalueAray = np.nan_to_num(pvalueAray, nan=1)
+        print(statAray,pvalueAray)
+    return statAray.argmax()
+
+#Cosine Similarity - angle between vectors *** does not take magnitude into account***
 def Cosine(comparitee_vector, comparitor_vector):
     dot_product = np.dot(comparitee_vector, comparitor_vector.T)
     denominator = (np.linalg.norm(comparitee_vector) * np.linalg.norm(comparitor_vector))
     return dot_product/denominator
 
     
-# Euclidean Distance
+# Euclidean Distance - Multi dimentional pythagorean eq.
 def Euclidean(comparitee_vector, comparitor_vector):
     vec1 = comparitee_vector.copy()
     vec2 = comparitor_vector.copy()
@@ -166,7 +235,7 @@ def Euclidean(comparitee_vector, comparitor_vector):
     #vec2 = np.resize(vec2,(vec1.shape[0],vec1.shape[1]))
     return np.linalg.norm(vec1-vec2)
 
-
+# Modification of Cosine similarity
 def Theta(comparitee_vector, comparitor_vector):
     return np.arccos(Cosine(comparitee_vector, comparitor_vector)) + np.radians(10)
 

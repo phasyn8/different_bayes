@@ -5,6 +5,83 @@ import ruptures as rpt
 from   scipy.stats import norm
 from   scipy.special import logsumexp
 
+from bayesian_changepoint_detection.priors import const_prior
+import bayesian_changepoint_detection
+from functools import partial
+from bayesian_changepoint_detection.bayesian_models import offline_changepoint_detection
+import bayesian_changepoint_detection.offline_likelihoods as offline_ll
+from bayesian_changepoint_detection.hazard_functions import constant_hazard
+from bayesian_changepoint_detection.bayesian_models import online_changepoint_detection
+import bayesian_changepoint_detection.online_likelihoods as online_ll
+
+
+def bayes_offline(data, truncate=-100):
+    '''Offline changepoint analysis for signal processing and finding changepoints.
+    implemended with 'bayesian changepoint detection' package (see references below)
+    
+    Requires a continuous 1D dataset as numpy array:
+    
+    Also:
+    
+    Tuning variables should include:
+
+    truncate term: NOT SURE WHAT THIS IS TRUNCATING yet
+
+
+    references:
+    https://github.com/hildensia/bayesian_changepoint_detection
+
+    
+    '''
+    #data = GR_rollAvg_[:2100]
+    prior_function = partial(const_prior, p=1/(len(data) + 100))
+    _trunc = truncate
+    
+    Q, P, Pcp = offline_changepoint_detection(data, prior_function ,offline_ll.StudentT(),truncate=_trunc)
+    
+    return Q, P, Pcp
+
+
+def bayes_online_CP(data, **kwargs):
+    '''
+    Online, changepoint analysis for signal processing and finding changepoints.
+    implemended with 'bayesian changepoint detection' package (see references below)
+    
+    Requires a continuous 1D dataset as numpy array:
+    
+    Also:
+    
+    Tuning variables should include:
+    
+    hazard value that corresponds to the maximum likely continuous sequence.
+    
+    alpha, beta =  SURE WHAT THESE ARE YET but likely two variables to determine the beta distribution prior.
+    
+    mu = expected mean of dataset 
+    
+    references:
+    https://github.com/hildensia/bayesian_changepoint_detection
+    Adams and Mackay 2007 "Bayesian Online Changepoint Detection" 
+    
+    
+    '''
+    
+    _mu = kwargs.get('mu')
+    _hazard = kwargs.get('hazard')
+    _alpha = kwargs.get('alpha')
+    _beta = kwargs.get('beta')
+    _kappa = kwargs.get('kappa')
+    
+    
+    hazard_function = partial(constant_hazard, _hazard)
+    
+    R, maxes = online_changepoint_detection(data, hazard_function, online_ll.StudentT(alpha=_alpha, beta=_beta , kappa=_kappa, mu=_mu))
+    
+    return R, maxes
+
+
+
+
 
 def pelt_bkps(data, pen=120, min_size=250):
 
