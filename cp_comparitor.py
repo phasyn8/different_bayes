@@ -198,7 +198,15 @@ def combine_vectors_to_matrix_(*vectors):
     
     Comparitee_vector = New data that is the question you "ask" the comparitor'''
 
+#Spearman Correlation, calcualtor
 def spearman_offset(comparitee_vector, comparitor_vector, **kwargs):
+    '''Takes two vectors as input and calculates comparitee (tee) to the comparitor (tor)
+    starting from the head of the comparitor vector until the last full comparitor
+    segment that is the same length as the comparitee.
+    
+    outputs the minimum argument loc which correspond to point where the tee:tor have
+     highest correation''' 
+
     _window = kwargs.get('window')
     stat = []
     pvalue = []
@@ -217,8 +225,10 @@ def spearman_offset(comparitee_vector, comparitor_vector, **kwargs):
         
         pvalueAray = np.array(pvalue)
         pvalueAray = np.nan_to_num(pvalueAray, nan=1)
-        print(statAray,pvalueAray)
-    return statAray.argmax()
+        print('statArgmax= ' + str(statAray.argmax()) + ' val ' + str(statAray[statAray.argmax()]))
+        print('pvalArgmin= ' + str(pvalueAray.argmin()) + ' val ' + str(pvalueAray[pvalueAray.argmin()]))
+        #print
+    return pvalueAray.argmin()
 
 #Cosine Similarity - angle between vectors *** does not take magnitude into account***
 def Cosine(comparitee_vector, comparitor_vector):
