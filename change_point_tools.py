@@ -13,9 +13,71 @@ import bayesian_changepoint_detection.offline_likelihoods as offline_ll
 from bayesian_changepoint_detection.hazard_functions import constant_hazard
 from bayesian_changepoint_detection.bayesian_models import online_changepoint_detection
 import bayesian_changepoint_detection.online_likelihoods as online_ll
+import sdt.changepoint as sdt_cp
+import numba
 
 
-def bayes_offline(data, truncate=-100):
+def bayes_offline_sdt(data, **kwargs):
+    '''Implementation of bayesian offline changepoint methods that is
+    described in Fearnhead et al 2006, Chosen for its elegant handling of
+    both univariate and multivariate data.
+    
+    Utilizing the protocols from sdt-python: 
+    https://schuetzgroup.github.io/sdt-python/
+    
+    input includes: 
+    data: np.array - 'm x n' matrix of m datasets and n observations
+    method: str - Choices - 'gauss' , 'ifm', 'full_cov'
+    engine: str - Choices - 'numba' or 'numpy' default is 'numba'
+    full_output: boolean - change point list or array len(data) probabilities of a changepoint
+                            returns 4 elements, prob, Q, P, Pcp
+    
+    returns probabilities of changepoints
+    
+    References:
+    Fearnhead, Paul: “Exact and efficient Bayesian inference for multiple changepoint problems”,
+    Statistics and computing 16.2 (2006), pp. 203–21
+    
+    Adams and McKay: “Bayesian Online Changepoint Detection”, arXiv:0710.3742
+    
+    Killick et al.: “Optimal Detection of Changepoints With a Linear Computational Cost”,
+    Journal of the American Statistical Association, Informa UK Limited, 2012, 107, 1590–1598
+    '''
+    
+    
+    _method = kwargs.get('method')
+    _prior = kwargs.get('prior')
+    _engine = kwargs.get('engine')
+    _full_output = kwargs.get('full_output')
+    _thresh = kwargs.get('threshold')
+    
+    
+    print(_method, _prior, _engine, _full_output, _thresh)
+    if _method == None:
+        _method = "full_cov"
+    if _prior == None:
+        _prior = "const"
+    if _engine == None:
+        _engine ="numba"
+    #if _full_output = True:
+    #    _full_output = False
+    
+    detOffBay = sdt_cp.BayesOffline(_prior, _method, engine=_engine)
+    
+    if _full_output==True:
+        #detOffBay = sdt_cp.BayesOffline(_prior, _method, engine=_engine)
+        prob, q, p, pcp = detOffBay.find_changepoints(data.T, full_output=True)
+        return prob, q, p, pcp
+    
+    elif _thresh!=None:
+        return detOffBay.find_changepoints(data.T, prob_threshold=_thresh)
+                    
+    else:
+        #detOffBay = sdt_cp.BayesOffline(_prior, _method, engine=_engine)
+        return detOffBay.find_changepoints(data.T)
+
+
+def bayes_offline_BCP(data, truncate=-100):
     '''Offline changepoint analysis for signal processing and finding changepoints.
     implemended with 'bayesian changepoint detection' package (see references below)
     
@@ -42,7 +104,7 @@ def bayes_offline(data, truncate=-100):
     return Q, P, Pcp
 
 
-def bayes_online_CP(data, **kwargs):
+def bayes_online_BCP(data, **kwargs):
     '''
     Online, changepoint analysis for signal processing and finding changepoints.
     implemended with 'bayesian changepoint detection' package (see references below)
@@ -53,11 +115,13 @@ def bayes_online_CP(data, **kwargs):
     
     Tuning variables should include:
     
-    hazard value that corresponds to the maximum likely continuous sequence.
+    hazard = value that corresponds to the maximum likely continuous sequence.
     
-    alpha, beta =  SURE WHAT THESE ARE YET but likely two variables to determine the beta distribution prior.
+    alpha, beta = to determine student T distribution prior.
     
-    mu = expected mean of dataset 
+    mu = expected mean of dataset
+
+    kappa = ??  
     
     references:
     https://github.com/hildensia/bayesian_changepoint_detection
@@ -98,14 +162,19 @@ def pelt_bkps(data, pen=120, min_size=250):
     min_size refers to the minimum continuous data length that will be 
     allowed between change points; pen is the threshold for the search 
     method, in that higher numbers find fewer changepoints.
-        
-        
-        
+    
+    
+    
+
     model options:
         "l2" (least squares)
         "ar" (auto regressive)
         "cosine" (Cosine similarity)
-        ... refer to ruptures documentation for others
+        refer to ruptures documentation for others
+
+    references:
+    Killick et al.: “Optimal Detection of Changepoints With a Linear Computational Cost”, 
+    Journal of the American Statistical Association, Informa UK Limited, 2012, 107, 1590–1598
     '''
         
     _pen = pen
