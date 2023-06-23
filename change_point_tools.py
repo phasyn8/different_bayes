@@ -5,17 +5,68 @@ import ruptures as rpt
 from   scipy.stats import norm
 from   scipy.special import logsumexp
 
-from bayesian_changepoint_detection.priors import const_prior
-import bayesian_changepoint_detection
-from functools import partial
-from bayesian_changepoint_detection.bayesian_models import offline_changepoint_detection
-import bayesian_changepoint_detection.offline_likelihoods as offline_ll
-from bayesian_changepoint_detection.hazard_functions import constant_hazard
-from bayesian_changepoint_detection.bayesian_models import online_changepoint_detection
-import bayesian_changepoint_detection.online_likelihoods as online_ll
+#from bayesian_changepoint_detection.priors import const_prior
+#import bayesian_changepoint_detection
+#from functools import partial
+# from bayesian_changepoint_detection.bayesian_models import offline_changepoint_detection
+# import bayesian_changepoint_detection.offline_likelihoods as offline_ll
+#from bayesian_changepoint_detection.hazard_functions import constant_hazard
+#from bayesian_changepoint_detection.bayesian_models import online_changepoint_detection
+#import bayesian_changepoint_detection.online_likelihoods as online_ll
 import sdt.changepoint as sdt_cp
 import numba
 
+def split_dataset(dataset, segment_size):
+    '''Computational cost for offline bayesian search method is ????(look this up, I think it's O^n)
+    
+    If you can expect that the probability for change point segments to be less than a certain log distance
+    then splitting the log into many segments can greatly improve computation time
+    
+    This is currently only built with the sdt-python offline Bayesian method that concatenates a continuous
+    probabilty curve for the input dataset.
+
+    Inputs:
+    Dataset (numpy array, this will handle multi-dimentonal data as well, in a horizonal stack)
+    Segment size  ( legth of segments, last segment will be what is a remainder after n complete segments)
+
+    **** DOES NOT HANDLE CORNER CASE WHERE SEGMENT FALLS ON A CHANGEPOINT**** this will have to be addressed.  
+
+    
+    '''
+
+    segments = []
+    current_segment = []
+    segment_num = 0
+
+    for idx, item in enumerate(dataset):
+        current_segment.append(item)
+        if len(current_segment) == segment_size:
+            segment_num += 1
+            segments.append([segment_num, idx - segment_size + 1, idx + 1])
+            current_segment = []
+
+    if current_segment:
+        segment_num += 1
+        segments.append([segment_num, len(dataset) - len(current_segment), len(dataset)])
+
+    return segments
+
+def bayes_offline_split(data, sequence_length=5000, **kwargs):
+    
+    if len(data) <= sequence_length:
+        bayes_offline_sdt(data.T)
+    else:
+        split = split_dataset(data, sequence_length)
+    
+    full_prob = []
+    
+    for segment in split:
+        #print(segment)
+        seg_prob = bayes_offline_sdt(data[segment[1]:segment[2]].T)
+        full_prob = np.concatenate((full_prob, seg_prob))
+        print('completed segment ' + str(segment[0]) + ' from' + str(segment[1]) + ': ' + str(segment[2])+ ' of ' + str(len(data)))
+    
+    return full_prob
 
 def bayes_offline_sdt(data, **kwargs):
     '''Implementation of bayesian offline changepoint methods that is
@@ -77,79 +128,98 @@ def bayes_offline_sdt(data, **kwargs):
         return detOffBay.find_changepoints(data.T)
 
 
-def bayes_offline_BCP(data, truncate=-100):
-    '''Offline changepoint analysis for signal processing and finding changepoints.
-    implemended with 'bayesian changepoint detection' package (see references below)
+# Depreciating because sdt-python is faster
+# def bayes_offline_BCP(data, truncate=-20):
+#     '''Offline changepoint analysis for signal processing and finding changepoints.
+#     implemended with 'bayesian changepoint detection' package (see references below)
     
-    Requires a continuous 1D dataset as numpy array:
+#     Requires a continuous 1D dataset as numpy array:
     
-    Also:
+#     Also:
     
-    Tuning variables should include:
+#     Tuning variables should include:
 
-    truncate term: NOT SURE WHAT THIS IS TRUNCATING yet
+#     truncate term:  Speed up calculations by truncating a sum if
+#      the summands provide negligible contributions. This parameter 
+#      is the exponent of the threshold. Set to -inf to turn off. Defaults to -20
 
 
-    references:
-    https://github.com/hildensia/bayesian_changepoint_detection
+#     references:
+#     https://github.com/hildensia/bayesian_changepoint_detection
 
     
+#     '''
+#     #data = GR_rollAvg_[:2100]
+#     prior_function = partial(const_prior, p=1/(len(data) + 100))
+#     _trunc = truncate
+    
+#     Q, P, Pcp = offline_changepoint_detection(data, prior_function ,offline_ll.StudentT(),truncate=_trunc)
+    
+#     return Q, P, Pcp
+
+# depreciating because sdt-python is much faster
+# def bayes_online_BCP(data, **kwargs):
+#     '''
+#     Online, changepoint analysis for signal processing and finding changepoints.
+#     implemended with 'bayesian changepoint detection' package (see references below)
+    
+#     Requires a continuous 1D dataset as numpy array:
+    
+#     Also:
+    
+#     Tuning variables should include:
+    
+#     hazard = value that corresponds to the maximum likely continuous sequence.
+    
+#     alpha, beta = to determine student T distribution prior.
+    
+#     mu = expected mean of dataset
+
+#     kappa = ??  
+    
+#     references:
+#     https://github.com/hildensia/bayesian_changepoint_detection
+#     Adams and Mackay 2007 "Bayesian Online Changepoint Detection" 
+    
+    
+#     '''
+    
+#     _mu = kwargs.get('mu')
+#     _hazard = kwargs.get('hazard')
+#     _alpha = kwargs.get('alpha')
+#     _beta = kwargs.get('beta')
+#     _kappa = kwargs.get('kappa')
+    
+    
+#     hazard_function = partial(constant_hazard, _hazard)
+    
+#     R, maxes = online_changepoint_detection(data, hazard_function, online_ll.StudentT(alpha=_alpha, beta=_beta , kappa=_kappa, mu=_mu))
+    
+#     return R, maxes
+
+
+
+from scipy.signal import find_peaks
+
+def find_prob_peaks(data, height=0.1, return_peak_heights=False):
+    '''Wrapper for scipy find peaks function
+    
+    Taks in 1D numpy data array and outputs array of local maximums
+    
+    hight function sets minimum threshold, default is 0.01 
     '''
-    #data = GR_rollAvg_[:2100]
-    prior_function = partial(const_prior, p=1/(len(data) + 100))
-    _trunc = truncate
     
-    Q, P, Pcp = offline_changepoint_detection(data, prior_function ,offline_ll.StudentT(),truncate=_trunc)
+    peaks, _peak_heights = find_peaks(data, height=0.01)
     
-    return Q, P, Pcp
-
-
-def bayes_online_BCP(data, **kwargs):
-    '''
-    Online, changepoint analysis for signal processing and finding changepoints.
-    implemended with 'bayesian changepoint detection' package (see references below)
-    
-    Requires a continuous 1D dataset as numpy array:
-    
-    Also:
-    
-    Tuning variables should include:
-    
-    hazard = value that corresponds to the maximum likely continuous sequence.
-    
-    alpha, beta = to determine student T distribution prior.
-    
-    mu = expected mean of dataset
-
-    kappa = ??  
-    
-    references:
-    https://github.com/hildensia/bayesian_changepoint_detection
-    Adams and Mackay 2007 "Bayesian Online Changepoint Detection" 
-    
-    
-    '''
-    
-    _mu = kwargs.get('mu')
-    _hazard = kwargs.get('hazard')
-    _alpha = kwargs.get('alpha')
-    _beta = kwargs.get('beta')
-    _kappa = kwargs.get('kappa')
-    
-    
-    hazard_function = partial(constant_hazard, _hazard)
-    
-    R, maxes = online_changepoint_detection(data, hazard_function, online_ll.StudentT(alpha=_alpha, beta=_beta , kappa=_kappa, mu=_mu))
-    
-    return R, maxes
-
-
-
+    if return_peak_heights == True:
+        return peaks, _peak_heights
+    else:
+        return peaks
 
 
 def pelt_bkps(data, pen=120, min_size=250):
 
-    '''PELT search method for offline changepoint search.
+    '''PELT search method for offline changepoint search. Ruptures.
 
     will find an arbitrary number of changepoints
 
@@ -188,6 +258,8 @@ def pelt_bkps(data, pen=120, min_size=250):
 
 def CP_GRAPH(data, pen=120, min_size=250):
         
+    '''wrapper for changepoint finding and Visualization of changepoints using ruptures PELT method'''
+
     _min_size = min_size
     _pen = pen
     data_work = data

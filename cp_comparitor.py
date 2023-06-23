@@ -198,7 +198,7 @@ def combine_vectors_to_matrix_(*vectors):
     
     Comparitee_vector = New data that is the question you "ask" the comparitor'''
 
-#Spearman Correlation, calcualtor
+#Spearman Correlation, calculator
 def spearman_offset(comparitee_vector, comparitor_vector, **kwargs):
     '''Takes two vectors as input and calculates comparitee (tee) to the comparitor (tor)
     starting from the head of the comparitor vector until the last full comparitor
@@ -245,7 +245,7 @@ def Euclidean(comparitee_vector, comparitor_vector):
     #vec2 = np.resize(vec2,(vec1.shape[0],vec1.shape[1]))
     return np.linalg.norm(vec1-vec2)
 
-# Modification of Cosine similarity
+# Adaptation of Cosine similarity
 def Theta(comparitee_vector, comparitor_vector):
     return np.arccos(Cosine(comparitee_vector, comparitor_vector)) + np.radians(10)
 

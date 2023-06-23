@@ -10,7 +10,11 @@ import matplotlib.pyplot as plt
 
 def fill_out_data_ends(data):
 
-    '''replaces NaN values at the ends of an incomplete dataset with first or last value encountered'''
+    '''replaces NaN values at the ends of an incomplete pandas dataset
+    
+    (one that does not fill out the ends of the index) with first or last value 
+    
+    for beginning or end encountered'''
 
     lmin = np.min(np.where(np.isnan(data)==False))
     lmax = np.max(np.where(np.isnan(data)==False))
@@ -24,7 +28,11 @@ def fill_out_data_ends(data):
 
 def remove_nan(data, replace_with='glob_avg'):
 
-    '''Replace NaN values with average of all input data'''
+    '''Replace NaN values with average of all input data
+    
+    will soon include a calculation of the local average, or the first or last real datapoint
+    encountered.
+    '''
     
     if replace_with == 'glob_avg':
   
@@ -36,6 +44,9 @@ def remove_nan(data, replace_with='glob_avg'):
     #       avg = df.rolling(periods=2, window=30)
 
     return data
+
+
+
 
 def df_rolling_avg(data, datalabel, window=30, periods=3):
 
