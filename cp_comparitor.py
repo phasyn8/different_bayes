@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy
 import ruptures as rpt
+import scipy.stats as stats
 
 
 def piecewiseFunc(bkpt, avg):   #constructor for piecewise function returns np.piecewise(x, bkpts_bool,averages)
