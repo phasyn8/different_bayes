@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.interpolate import interp1d
 
 
 #class well_tools(object):
@@ -26,25 +26,91 @@ def fill_out_data_ends(data):
 
 
 
-def remove_nan(data, replace_with='glob_avg'):
+# def remove_nan(data, replace_with='glob_avg', percent=0, window_size=100):
 
-    '''Replace NaN values with average of all input data
+
+#     '''Replace NaN values with average of all input data
     
-    will soon include a calculation of the local average, or the first or last real datapoint
-    encountered.
-    '''
+#     will soon include a calculation of the local average, or the first or last real datapoint
+#     encountered.
+#     '''
     
-    if replace_with == 'glob_avg':
+#     if replace_with == 'glob_avg':
   
-        data_with_removed_NaN = data[~np.isnan(data)]
-        mu = np.mean(data_with_removed_NaN)
-        data[np.isnan(data)] = mu
+#         data_with_removed_NaN = data[~np.isnan(data)]
+#         mu = np.mean(data_with_removed_NaN)
+#         data[np.isnan(data)] = mu
     
-    #   elif replace_with = 'local_avg'
-    #       avg = df.rolling(periods=2, window=30)
+#     #   elif replace_with = 'local_avg'
+#     #       avg = df.rolling(periods=2, window=30)
 
-    return data
+#     if replace_with == 'local_avg':
 
+#         #nans = data[~np.isnan(data)]
+#         # Calculate the lower and upper percentile values
+#         low_value = np.percentile(data, percent)
+#         high_value = np.percentile(data, 100 - percent)
+
+#         # Identify outlier data points
+#         outliers = np.logical_or(data < low_value, data > high_value)
+#         nans = np.logical_not(data[~np.isnan(data)])
+#         # Replace outliers with local average
+#         data[outliers] = np.convolve(data, np.ones(window_size)/window_size, mode='same')[outliers]
+#         data[nas] = np.convolve(data, np.ones(window_size)/window_size, mode='same')[nans]
+#         # Update the well log curve with the replaced values
+        
+    
+#     return data
+
+
+
+def replace_nans(array, method='global_average', window_size=3):
+    """
+    Replace NaN values in an array with specified method.
+    
+    Parameters:
+        array (numpy.ndarray): Input array containing NaN values.
+        method (str): Method to replace NaNs. Options are 'global_average',
+                      'local_average', or 'linear_interpolation'.
+                      Default is 'global_average'.
+        window_size (int): Size of the window for local averaging. Applicable
+                           only if method is 'local_average'. Default is 3.
+    
+    Returns:
+        numpy.ndarray: Array with NaN values replaced.
+    """
+    if method == 'global_average':
+        # Compute the global average excluding NaN values
+        global_avg = np.nanmean(array)
+        # Replace NaNs with the global average
+        array[np.isnan(array)] = global_avg
+    
+    elif method == 'local_average':
+        # Replace NaNs with local average within a window
+        for i in range(len(array)):
+            if np.isnan(array[i]):
+                # Calculate the indices for the window around the NaN
+                lower_bound = max(0, i - window_size)
+                upper_bound = min(len(array), i + window_size + 1)
+                
+                # Compute the local average excluding NaN values
+                local_avg = np.nanmean(array[lower_bound:upper_bound])
+                # Replace NaN with the local average
+                array[i] = local_avg
+    
+    elif method == 'linear_interpolation':
+        # Create a mask of non-NaN values
+        mask = ~np.isnan(array)
+        # Create a linear interpolation function
+        interp_func = interp1d(np.where(mask)[0], array[mask])
+        # Replace NaNs with interpolated values
+        array[np.isnan(array)] = interp_func(np.where(np.isnan(array))[0])
+    
+    else:
+        raise ValueError("Invalid method. Please choose 'global_average', "
+                         "'local_average', or 'linear_interpolation'.")
+    
+    return array
 
 
 

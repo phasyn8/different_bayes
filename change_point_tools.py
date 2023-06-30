@@ -29,7 +29,7 @@ def split_dataset(dataset, segment_size):
     Dataset (numpy array, this will handle multi-dimentonal data as well, in a horizonal stack)
     Segment size  ( legth of segments, last segment will be what is a remainder after n complete segments)
 
-    **** DOES NOT HANDLE CORNER CASE WHERE SEGMENT FALLS ON A CHANGEPOINT**** this will have to be addressed.  
+    **** DOES NOT HANDLE CORNER CASE WHERE SEGMENT FALLS ON A CHANGEPOINT**** this will have to be addressed later.  
 
     
     '''
@@ -64,7 +64,7 @@ def bayes_offline_split(data, sequence_length=5000, **kwargs):
         #print(segment)
         seg_prob = bayes_offline_sdt(data[segment[1]:segment[2]].T)
         full_prob = np.concatenate((full_prob, seg_prob))
-        print('completed segment ' + str(segment[0]) + ' from' + str(segment[1]) + ': ' + str(segment[2])+ ' of ' + str(len(data)))
+        print('completed segment ' + str(segment[0]) + ' from ' + str(segment[1]) + ': ' + str(segment[2])+ ' of ' + str(len(data)), end='\r')
     
     return full_prob
 
@@ -128,7 +128,7 @@ def bayes_offline_sdt(data, **kwargs):
         return detOffBay.find_changepoints(data.T)
 
 
-# Depreciating because sdt-python is faster
+# Depreciating because sdt-python is much faster
 # def bayes_offline_BCP(data, truncate=-20):
 #     '''Offline changepoint analysis for signal processing and finding changepoints.
 #     implemended with 'bayesian changepoint detection' package (see references below)
@@ -232,7 +232,7 @@ def pelt_bkps(data, pen=120, min_size=250):
     min_size refers to the minimum continuous data length that will be 
     allowed between change points; pen is the threshold for the search 
     method, in that higher numbers find fewer changepoints.
-    
+
     
     
 
@@ -258,7 +258,7 @@ def pelt_bkps(data, pen=120, min_size=250):
 
 def CP_GRAPH(data, pen=120, min_size=250):
         
-    '''wrapper for changepoint finding and Visualization of changepoints using ruptures PELT method'''
+    '''wrapper for changepoint search and Visualization of changepoints using ruptures PELT method'''
 
     _min_size = min_size
     _pen = pen
