@@ -1,20 +1,17 @@
 import pandas as pd
 import numpy as np
 import ruptures as rpt
-
+from scipy.signal import find_peaks
 from   scipy.stats import norm
 from   scipy.special import logsumexp
-
-#from bayesian_changepoint_detection.priors import const_prior
-#import bayesian_changepoint_detection
-#from functools import partial
-# from bayesian_changepoint_detection.bayesian_models import offline_changepoint_detection
-# import bayesian_changepoint_detection.offline_likelihoods as offline_ll
-#from bayesian_changepoint_detection.hazard_functions import constant_hazard
-#from bayesian_changepoint_detection.bayesian_models import online_changepoint_detection
-#import bayesian_changepoint_detection.online_likelihoods as online_ll
 import sdt.changepoint as sdt_cp
 import numba
+
+
+
+
+
+'''===========TOOLS  - Split, Peak Finder============='''
 
 def split_dataset(dataset, segment_size):
     '''Computational cost for offline bayesian search method is ????(look this up, I think it's O^n)
@@ -28,8 +25,6 @@ def split_dataset(dataset, segment_size):
     Inputs:
     Dataset (numpy array, this will handle multi-dimentonal data as well, in a horizonal stack)
     Segment size  ( legth of segments, last segment will be what is a remainder after n complete segments)
-
-    **** DOES NOT HANDLE CORNER CASE WHERE SEGMENT FALLS ON A CHANGEPOINT**** this will have to be addressed later.  
 
     
     '''
@@ -51,22 +46,99 @@ def split_dataset(dataset, segment_size):
 
     return segments
 
-def bayes_offline_split(data, sequence_length=5000, **kwargs):
+
+def find_prob_peaks(data, height=0.1, return_peak_heights=False):
+    '''Wrapper for scipy find peaks function
     
-    if len(data) <= sequence_length:
-        bayes_offline_sdt(data.T)
+    Taks in 1D numpy data array and outputs array of local maximums
+    
+    hight function sets minimum threshold, default is 0.01 
+    '''
+    
+    peaks, _peak_heights = find_peaks(data, height=height)
+    
+    if return_peak_heights == True:
+        return peaks, _peak_heights
     else:
-        split = split_dataset(data, sequence_length)
+        return peaks
+
+
+def bayes_offline_split(data, segment_length=5000, **kwargs):
+    '''For computational efficiency, datasets are split into equal segments for ChangePoint detection
+    
+    Parameters:
+    data: np.ndarray, 
+    sequence length: this is division length of the segments, any remainder of incomplete
+                    segments will be in the tail (last).  
+    
+
+    **** DOES NOT UNIQULY HANDLE CORNER CASE WHERE SEGMENT FALLS ON A CHANGEPOINT**** 
+    Dunno what this means yet, if it's a problem at all, will have to be addressed later.  
+
+    '''
+    
+    #Keyword Args assingment
+    _prior = kwargs.get('prior')
+    _method = kwargs.get('method')
+    _engine = kwargs.get('engine')
+
+    #Argument Defaults
+    if _method == None:
+        _method = "full_cov"
+    if _prior == None:
+        _prior = "const"
+    if _engine == None:
+        _engine ="numba"
+    print('method- ' +_method+ ', prior- ' +_prior + ', engine- '+ _engine)#'Output- '+ _full_output +'Threshhold- '+ _thresh)
     
     full_prob = []
     
-    for segment in split:
-        #print(segment)
-        seg_prob = bayes_offline_sdt(data[segment[1]:segment[2]].T)
-        full_prob = np.concatenate((full_prob, seg_prob))
-        print('completed segment ' + str(segment[0]) + ' from ' + str(segment[1]) + ': ' + str(segment[2])+ ' of ' + str(len(data)), end='\r')
+    #Go straight to CP search segments lengths that are less than the dataset length
+    if len(data) <= segment_length:
+        print('Segment length is less than dataset length, no spliting necessary')
+        full_prob=bayes_offline_sdt(data.T, method=_method, prior=_prior, engine=_engine)
     
+    #if segment is smaller than dataset, go on to splitting it up
+    else:
+        split = split_dataset(data, segment_length)
+    
+        #establishing full probablility obj
+        
+
+        #loop through segments and add probability dist. to the full_prob obj
+        print('Segmenting into '+ str(segment_length))
+        for segment in split:
+            #print('Segmenting into '+ str(segment_length))
+            seg_prob = bayes_offline_sdt(data[segment[1]:segment[2]].T, 
+                                        method=_method, prior=_prior, engine=_engine)
+            full_prob = np.concatenate((full_prob, seg_prob))
+            print('completed segment ' + str(segment[0]) + ' from ' + str(segment[1]) + ': ' + str(segment[2])+ ' of ' + str(len(data)), end="\r")
+    print(end='/n')
     return full_prob
+
+def normalize_array(arr, low_clip, high_clip): 
+    '''created through CHATGPT-4
+    text input:
+
+    build a python function that normalizes a numpy 
+    array to values between zero and one as inputs takes in an 
+    array to normalize, and two clipping percentage parameters 
+    one for the high end and one for the low end'''
+
+    # Calculate the lower and upper percentile values
+    low_value = np.percentile(arr, low_clip)
+    high_value = np.percentile(arr, 100 - high_clip)
+    
+    # Clip the array values based on the percentiles
+    clipped_arr = np.clip(arr, low_value, high_value)
+    
+    # Normalize the clipped array to values between zero and one
+    normalized_arr = (clipped_arr - low_value) / (high_value - low_value)
+    
+    return normalized_arr
+
+''' ==========CHANGEPOINT SEARCH TOOLS ==========='''
+
 
 def bayes_offline_sdt(data, **kwargs):
     '''Implementation of bayesian offline changepoint methods that is
@@ -76,10 +148,14 @@ def bayes_offline_sdt(data, **kwargs):
     Utilizing the protocols from sdt-python: 
     https://schuetzgroup.github.io/sdt-python/
     
-    input includes: 
+    Parameters includes: 
     data: np.array - 'm x n' matrix of m datasets and n observations
-    method: str - Choices - 'gauss' , 'ifm', 'full_cov'
-    engine: str - Choices - 'numba' or 'numpy' default is 'numba'
+    method: str - Choices - {"gauss" , "ifm", "full_cov"}
+    prior: str - Choices - {"const", "geometric", "neg_binomial"}
+    engine: str - Choices - {'numba' or 'numpy' default is 'numba'}
+    past: int - number of datapoints that probability seach will include in analysis
+
+
     full_output: boolean - change point list or array len(data) probabilities of a changepoint
                             returns 4 elements, prob, Q, P, Pcp
     
@@ -95,40 +171,50 @@ def bayes_offline_sdt(data, **kwargs):
     Journal of the American Statistical Association, Informa UK Limited, 2012, 107, 1590–1598
     '''
     
-    
+    #KWARGS getter 
     _method = kwargs.get('method')
     _prior = kwargs.get('prior')
     _engine = kwargs.get('engine')
     _full_output = kwargs.get('full_output')
     _thresh = kwargs.get('threshold')
+    _past = kwargs.get('past')
     
     
-    print(_method, _prior, _engine, _full_output, _thresh)
+    #Default arguments
     if _method == None:
         _method = "full_cov"
     if _prior == None:
         _prior = "const"
     if _engine == None:
         _engine ="numba"
+    if _past == None:
+        _past = 20
     #if _full_output = True:
     #    _full_output = False
+    #print('method- ' +_method+ ', prior- ' +_prior + ', engine- '+ _engine)#'Output- '+ _full_output +'Threshhold- '+ _thresh)
     
+    
+    #Class init
     detOffBay = sdt_cp.BayesOffline(_prior, _method, engine=_engine)
     
+    #Full output 
     if _full_output==True:
         #detOffBay = sdt_cp.BayesOffline(_prior, _method, engine=_engine)
         prob, q, p, pcp = detOffBay.find_changepoints(data.T, full_output=True)
         return prob, q, p, pcp
     
+    #Threshold case output
     elif _thresh!=None:
         return detOffBay.find_changepoints(data.T, prob_threshold=_thresh)
                     
+    #Everything else output
     else:
         #detOffBay = sdt_cp.BayesOffline(_prior, _method, engine=_engine)
-        return detOffBay.find_changepoints(data.T)
+        return detOffBay.find_changepoints(data.T, truncate=-100)
 
 
-# Depreciating because sdt-python is much faster
+
+''' Depreciating  this function because sdt-python is much much faster '''
 # def bayes_offline_BCP(data, truncate=-20):
 #     '''Offline changepoint analysis for signal processing and finding changepoints.
 #     implemended with 'bayesian changepoint detection' package (see references below)
@@ -199,22 +285,8 @@ def bayes_offline_sdt(data, **kwargs):
 
 
 
-from scipy.signal import find_peaks
 
-def find_prob_peaks(data, height=0.1, return_peak_heights=False):
-    '''Wrapper for scipy find peaks function
-    
-    Taks in 1D numpy data array and outputs array of local maximums
-    
-    hight function sets minimum threshold, default is 0.01 
-    '''
-    
-    peaks, _peak_heights = find_peaks(data, height=0.01)
-    
-    if return_peak_heights == True:
-        return peaks, _peak_heights
-    else:
-        return peaks
+
 
 
 def pelt_bkps(data, pen=120, min_size=250):
@@ -232,10 +304,7 @@ def pelt_bkps(data, pen=120, min_size=250):
     min_size refers to the minimum continuous data length that will be 
     allowed between change points; pen is the threshold for the search 
     method, in that higher numbers find fewer changepoints.
-
-    
-    
-
+        
     model options:
         "l2" (least squares)
         "ar" (auto regressive)
@@ -256,6 +325,10 @@ def pelt_bkps(data, pen=120, min_size=250):
     
     return my_bkps
 
+
+
+'''=======================VISUALIZATION =============================='''
+
 def CP_GRAPH(data, pen=120, min_size=250):
         
     '''wrapper for changepoint search and Visualization of changepoints using ruptures PELT method'''
@@ -270,6 +343,11 @@ def CP_GRAPH(data, pen=120, min_size=250):
     rpt.show.display(data_work, CPoints, figsize=(10, 3))
 
     return CPoints
+
+
+
+'''===============Online Bayesian as implemented by G. Gunderson======================='''
+
 
 class change_point_tools(object):
     if __name__ == '__main__':
@@ -290,10 +368,6 @@ class change_point_tools(object):
 
 
     
-
-
-
-
 
 
         """============================================================================
@@ -460,9 +534,3 @@ class change_point_tools(object):
 
         plt.tight_layout()
         plt.show()
-
-
-
-    
-
-        

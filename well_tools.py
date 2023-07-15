@@ -10,11 +10,17 @@ from scipy.interpolate import interp1d
 
 def fill_out_data_ends(data):
 
-    '''replaces NaN values at the ends of an incomplete pandas dataset
+    '''replaces NaN values at the head and tail ends of an incomplete pandas dataset
+        (one that does not fill out the ends of the index)
     
-    (one that does not fill out the ends of the index) with first or last value 
-    
-    for beginning or end encountered'''
+    Parameters:
+         data: (pandas.DataFrame)
+
+
+    Output:
+        pandas.DataFrame with dataset extrapolated from the first and last valid values
+        extrapolated to the ends
+    '''
 
     lmin = np.min(np.where(np.isnan(data)==False))
     lmax = np.max(np.where(np.isnan(data)==False))
@@ -23,45 +29,6 @@ def fill_out_data_ends(data):
     if lmax < len(data):
         data[lmax:] = data[lmax]
     return data
-
-
-
-# def remove_nan(data, replace_with='glob_avg', percent=0, window_size=100):
-
-
-#     '''Replace NaN values with average of all input data
-    
-#     will soon include a calculation of the local average, or the first or last real datapoint
-#     encountered.
-#     '''
-    
-#     if replace_with == 'glob_avg':
-  
-#         data_with_removed_NaN = data[~np.isnan(data)]
-#         mu = np.mean(data_with_removed_NaN)
-#         data[np.isnan(data)] = mu
-    
-#     #   elif replace_with = 'local_avg'
-#     #       avg = df.rolling(periods=2, window=30)
-
-#     if replace_with == 'local_avg':
-
-#         #nans = data[~np.isnan(data)]
-#         # Calculate the lower and upper percentile values
-#         low_value = np.percentile(data, percent)
-#         high_value = np.percentile(data, 100 - percent)
-
-#         # Identify outlier data points
-#         outliers = np.logical_or(data < low_value, data > high_value)
-#         nans = np.logical_not(data[~np.isnan(data)])
-#         # Replace outliers with local average
-#         data[outliers] = np.convolve(data, np.ones(window_size)/window_size, mode='same')[outliers]
-#         data[nas] = np.convolve(data, np.ones(window_size)/window_size, mode='same')[nans]
-#         # Update the well log curve with the replaced values
-        
-    
-#     return data
-
 
 
 def replace_nans(array, method='global_average', window_size=3):
@@ -114,6 +81,7 @@ def replace_nans(array, method='global_average', window_size=3):
 
 
 
+
 def df_rolling_avg(data, datalabel, window=30, periods=3):
 
     _window = window
@@ -130,10 +98,22 @@ def df_rolling_avg(data, datalabel, window=30, periods=3):
 
     return df
 
+
 def compute_all_rolling_avg(data, window, periods):
 
-    '''compute rolling average, takes in a pandas dataframe, an integer period and number of
-    windows. Appends rolling average for all column datas and outputs df, retaining originals'''
+    '''
+    compute rolling average,takes in a pandas dataframe, an integer period and number of
+    windows. Appends rolling average for all column datas and outputs df, retaining originals
+    
+    Parameters:
+        data: (numpy array or pandas DataFrame)** will perform the operation on all rows**
+        window: rolling window for the mean calculation 
+        period: not clear what this is, please refer to pandas.DataFrame.rolling()
+
+    Returns:
+        pandas dataframe including original input data and
+
+    '''
     
     _window = window
     _periods = periods 
@@ -151,15 +131,16 @@ def compute_all_rolling_avg(data, window, periods):
     return df
 
 
+
 def label_generator(df_well, df_tops, column_depth, label_name): #From Yohanes Nuwara
     """
     Generate Formation (or other) Labels to Well Dataframe
     (useful for EDA and machine learning purpose)
 
-    Input:
+    Parameters:
 
-    df_well is your well dataframe (that originally doesn't have the intended label)
-    df_tops is your label dataframe (this dataframe should ONLY have 2 columns)
+        df_well (pandas.DataFrame) is your well dataframe (that originally doesn't have the intended label)
+        df_tops (pandas.DataFrame) is your label dataframe (this dataframe should ONLY have 2 columns)
         1st column is the label name (e.g. formation top names)
         2nd column is the depth of each label name
 
