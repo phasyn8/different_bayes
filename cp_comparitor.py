@@ -157,7 +157,7 @@ def changepoint_stat(data, prob, height=0.1, **kwargs):
         mb = linregress(np.arange(len(data)), data)
         return mb[1] 
 
-    stat_func = [np.mean, np.median, np.std, linearM, linearB]
+    stat_func = [np.mean, np.std, linearM, linearB] #np.meadian
 
     stats = sdt.changepoint.segment_stats(data, bkps, stat_func, mask=None, stat_margin=_stat_margin, return_len='segments')
     
@@ -191,6 +191,7 @@ def df_add_CP_Prob(df, log_dict=[], label='CP_Prob_', nan_method='local_average'
     _prior = kwargs.get('prior') # choices are "const", "geometric", "neg_binomial"
     _method = kwargs.get('method')  # choices are 'gauss', 'ifm' or 'full_cov'
     _engine = kwargs.get('engine')  # choices are "numpy" or "numba"
+    _normalize = kwargs.get('normal')
 
     #Argument Defaults
     if _method == None:
@@ -199,6 +200,8 @@ def df_add_CP_Prob(df, log_dict=[], label='CP_Prob_', nan_method='local_average'
         _prior = "const"
     if _engine == None:
         _engine ="numba"
+    #if _normalize == False:
+    
     
     #Fill ends of incomplete df, replace NaN's with parameter method, and changepoint search with parameter segment splits
     for log in log_dict:
@@ -208,7 +211,7 @@ def df_add_CP_Prob(df, log_dict=[], label='CP_Prob_', nan_method='local_average'
 
         df[log] = wtool.replace_nans(df[log].values, method=nan_method, window_size=window_size)
         
-        df[labl] = cp_Tools.bayes_offline_split(df[log].values, segment_length=segment_length, method=_method, prior=_prior, engine=_engine)
+        df[labl] = cp_Tools.bayes_offline_split(df[log].values, segment_length=segment_length, method=_method, prior=_prior, engine=_engine, normal=_normalize)
 
 
 

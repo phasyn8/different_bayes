@@ -81,6 +81,7 @@ def bayes_offline_split(data, segment_length=5000, **kwargs):
     _prior = kwargs.get('prior')
     _method = kwargs.get('method')
     _engine = kwargs.get('engine')
+    _normalize = kwargs.get('normal')
 
     #Argument Defaults
     if _method == None:
@@ -110,7 +111,7 @@ def bayes_offline_split(data, segment_length=5000, **kwargs):
         for segment in split:
             #print('Segmenting into '+ str(segment_length))
             seg_prob = bayes_offline_sdt(data[segment[1]:segment[2]].T, 
-                                        method=_method, prior=_prior, engine=_engine)
+                                        method=_method, prior=_prior, engine=_engine, normal=_normalize)
             full_prob = np.concatenate((full_prob, seg_prob))
             print('completed segment ' + str(segment[0]) + ' from ' + str(segment[1]) + ': ' + str(segment[2])+ ' of ' + str(len(data)), end="\r")
     print(end='/n')
@@ -148,7 +149,7 @@ def bayes_offline_sdt(data, **kwargs):
     Utilizing the protocols from sdt-python: 
     https://schuetzgroup.github.io/sdt-python/
     
-    Parameters includes: 
+    Parameters: 
     data: np.array - 'm x n' matrix of m datasets and n observations
     method: str - Choices - {"gauss" , "ifm", "full_cov"}
     prior: str - Choices - {"const", "geometric", "neg_binomial"}
@@ -178,6 +179,7 @@ def bayes_offline_sdt(data, **kwargs):
     _full_output = kwargs.get('full_output')
     _thresh = kwargs.get('threshold')
     _past = kwargs.get('past')
+    _normalize = kwargs.get('normal')
     
     
     #Default arguments
@@ -189,6 +191,8 @@ def bayes_offline_sdt(data, **kwargs):
         _engine ="numba"
     if _past == None:
         _past = 20
+    if _normalize == True:
+        data = normalize_array(data, 0, 0)
     #if _full_output = True:
     #    _full_output = False
     #print('method- ' +_method+ ', prior- ' +_prior + ', engine- '+ _engine)#'Output- '+ _full_output +'Threshhold- '+ _thresh)
