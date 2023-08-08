@@ -168,7 +168,7 @@ def changepoint_stat(data, prob, height=0.1, **kwargs):
     return stats
 
 
-def df_add_CP_Prob(df, log_dict=[], label='CP_Prob_', nan_method='local_average', window_size=200, segment_length=1000, **kwargs):
+def df_add_CP_Prob(df, start, stop, log_dict=[], label='CP_Prob_', nan_method='local_average', window_size=200, segment_length=1000, **kwargs):
     ''' Adds a probability curve for change points to a dataFrame
     
     Parameters:
@@ -207,11 +207,11 @@ def df_add_CP_Prob(df, log_dict=[], label='CP_Prob_', nan_method='local_average'
     for log in log_dict:
         print(log+' finding changepoints')
         labl = label+log
-        df[log] = wtool.fill_out_data_ends(df[log].values)
+        df[log][start:stop] = wtool.fill_out_data_ends(df[log][start:stop].values)
 
-        df[log] = wtool.replace_nans(df[log].values, method=nan_method, window_size=window_size)
+        df[log][start:stop] = wtool.replace_nans(df[log][start:stop].values, method=nan_method, window_size=window_size)
         
-        df[labl] = cp_Tools.bayes_offline_split(df[log].values, segment_length=segment_length, method=_method, prior=_prior, engine=_engine, normal=_normalize)
+        df[labl][start:stop] = cp_Tools.bayes_offline_split(df[log][start:stop].values, segment_length=segment_length, method=_method, prior=_prior, engine=_engine, normal=_normalize)
 
 
 

@@ -11,7 +11,7 @@ import numba
 
 
 
-'''===========TOOLS  - Split, Peak Finder============='''
+'''===========TOOLS  - Split dataset; Peak Finder============='''
 
 def split_dataset(dataset, segment_size):
     '''Computational cost for offline bayesian search method is ????(look this up, I think it's O^n)
@@ -63,7 +63,7 @@ def find_prob_peaks(data, height=0.1, return_peak_heights=False):
         return peaks
 
 
-def bayes_offline_split(data, segment_length=5000, **kwargs):
+def bayes_offline_split(data, segment_length=1000, **kwargs):
     '''For computational efficiency, datasets are split into equal segments for ChangePoint detection
     
     Parameters:
