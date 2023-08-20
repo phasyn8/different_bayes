@@ -519,8 +519,8 @@ def spearman_offset(comparitee_vector, comparitor_vector, **kwargs):
     _normalize = kwargs.get('norm')
     stat = []
     pvalue = []
-    normalize_array(df_f11A['GR'][2600:].to_numpy(), 0, 0)
-    if norm==True:
+    #normalize_array(df_f11A['GR'][2600:].to_numpy(), 0, 0)
+    if _normalize==True:
         tee = normalize_array(comparitee_vector, 0, 0)
         tor = normalize_array(comparitor_vector, 0, 0)
     else:
