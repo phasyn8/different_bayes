@@ -208,11 +208,11 @@ def df_add_CP_Prob(df, start, stop, log_dict=[], label='CP_Prob_', nan_method='l
         print(log+' finding changepoints')
         labl = label+log
         df[log][start:stop] = wtool.fill_out_data_ends(df[log][start:stop].values)
-
+        
         df[log][start:stop] = wtool.replace_nans(df[log][start:stop].values, method=nan_method, window_size=window_size)
         
-        df[labl][start:stop] = cp_Tools.bayes_offline_split(df[log][start:stop].values, segment_length=segment_length, method=_method, prior=_prior, engine=_engine, normal=_normalize)
-
+        df[labl][start:stop] = cp_Tools.bayes_offline_split(df[log][start:stop].to_numpy(), segment_length=segment_length, method=_method, prior=_prior, engine=_engine, normal=_normalize)
+        #df[labl][start:stop] = cp_Tools.bayes_offline_split(df[log][start:stop].values, segment_length=segment_length, method=_method, prior=_prior, engine=_engine, normal=_normalize)
 
 
 def cpCorrelation(cpComparitee, cpComparitor, **kwargs):
@@ -368,7 +368,79 @@ def prob_cpCorrelation(cpComparitee, cpComparitor, **kwargs):
     V = QumeProb.sum()
     
     return V
+'''This IS HERE STILL ONLY FOR REFERENCE'''
+# def prob_cpCorr(cpComparitee, cpComparitor, **kwargs):
+    
+#     '''Correlation engine for changepoint associations:
+#     takes in two matrix (m  x n) of changepoints/trends. One compariTEE who is compared to the compariTOR.
+    
+#     Relative changepoint (vector[0]) and corresponding trend values (vector[1:]) 
+    
+    
+#     Uses a kwarg to choose the geometric comparitor operation:
+    
+#     operator= 
+#     'cosine'
+#     'euclidean'
+#     'theta'
+#     'triangle'
+#     'sector'
+#     'mag'
 
+
+#     Builds output of change points that correspond to all remaining changepoints after the matching input vector. 
+#     '''
+
+#     #for key, value in kwargs.items():
+#         #print(f"{key}: {value}")
+
+#     tee = cpComparitee
+#     tor = cpComparitor
+    
+#     opFunc_dict = {'cosine':Cosine, 'euclidean': Euclidean, 'theta': Theta, 'triangle': Triangle, 'sector': Sector, 'magnitude': Magnitude_Difference} 
+#     _operator = kwargs.get('operator')
+    
+#     _threshold = kwargs.get('thresh')
+
+#     _df = kwargs.get('df')
+#     _log = kwargs.get('log')
+
+
+#     operator = opFunc_dict[_operator]
+
+#     QumeProb = np.array(([0],[0]))
+#     #k = 1
+#     '''    
+#     cos_thresh = 0.999999 # match is 1.0 (very tight threshhold, all reasonalble values are very close to 1.0)
+#     euclidean_thresh = 0.1 # match is near zero
+#     theta_thresh = 0.1745 # match is .1745
+#     triangle_thresh = 0.2 # match is near zero
+#     sector_thresh = 0.1 # match is near zero
+#     '''
+    
+#     for i in range(1,len(tee)):
+#         for j in range(1,len(tor)):
+#             idx = int(tor[j][0])
+#             teeTee = np.concatenate((tee[i-1][1:],tee[i][1:]))
+#             torTor = np.concatenate((tor[j-1][1:],tor[j][1:]))
+#             #print('iter')
+#             #print(tor[j][1],tor[j][2])
+#             #print(tee[i][1],tee[i][2])
+#             #if tor[j][1] == tee[i][1] and tor[j][2] == tee[i][2]:
+#             if operator(torTor, teeTee) >= _threshold:
+#                 jump = int(tee[i][0])
+#                 #print(type(jump)) 
+#                 print('*MATCH at ' + _log + ' Tor depth '+ str(idx)+ ' to Tee depth '+str(jump)+ ' with ' + _operator + ' value ' + str(operator(torTor, teeTee)))
+#                 probAdd = _df[_log][jump:].to_numpy()
+#                 #print(tor[i][1],tor[i][2])
+#                 #print(tee[j][1],tee[j][2])
+#                 QumeProb = combine_vector_and_matrix(probAdd, QumeProb, jump)
+#                 print('adding Tor probabilites from '+str(jump))     
+#     #unique, counts = np.unique(CumulativeProb, return_counts=True)
+    
+#     V = QumeProb.sum(axis=0)
+    
+#     return V
 def prob_cpCorr(cpComparitee, cpComparitor, **kwargs):
     
     '''Correlation engine for changepoint associations:
@@ -377,18 +449,25 @@ def prob_cpCorr(cpComparitee, cpComparitor, **kwargs):
     Relative changepoint (vector[0]) and corresponding trend values (vector[1:]) 
     
     
-    Uses a kwarg to choose the geometric comparitor operation:
+    
+    Uses a keyword argument to choose the geometric comparitor operation:
     
     operator= 
-    'cosine'
-    'euclidean'
-    'theta'
-    'triangle'
-    'sector'
-    'mag'
+        'cosine'
+        'euclidean'
+        'theta'
+        'triangle'
+        'sector'
+        'mag'
 
+    df = dataFrame that holds the changepoint probabiliy curve
+
+    log = dataFrame Column of keyword argument 'df' that contains the change point probability curve
 
     Builds output of change points that correspond to all remaining changepoints after the matching input vector. 
+    
+
+    
     '''
 
     #for key, value in kwargs.items():
@@ -411,12 +490,15 @@ def prob_cpCorr(cpComparitee, cpComparitor, **kwargs):
 
     QumeProb = np.array(([0],[0]))
     #k = 1
-    '''    
+
+    ''' NOTES ABOUT THRESHOLD FOR GEOMETRIC OPERATORS
+
     cos_thresh = 0.999999 # match is 1.0 (very tight threshhold, all reasonalble values are very close to 1.0)
-    euclidean_thresh = 0.1 # match is near zero
+    euclidean_thresh = 0.1 # match is near zero (AKA Euclidean distance)
     theta_thresh = 0.1745 # match is .1745
     triangle_thresh = 0.2 # match is near zero
     sector_thresh = 0.1 # match is near zero
+
     '''
     
     for i in range(1,len(tee)):
@@ -436,12 +518,13 @@ def prob_cpCorr(cpComparitee, cpComparitor, **kwargs):
                 #print(tor[i][1],tor[i][2])
                 #print(tee[j][1],tee[j][2])
                 QumeProb = combine_vector_and_matrix(probAdd, QumeProb, jump)
-                print('adding Tor probabilites from '+str(jump))     
+                print('adding Tor probabilites to Tee cumulative matix, from '+str(jump))     
     #unique, counts = np.unique(CumulativeProb, return_counts=True)
     
     V = QumeProb.sum(axis=0)
     
-    return V
+    return V #, QumeProb
+
 
 def combine_vector_and_matrix(vector, matrix, column):
     # Check if the column value is valid
@@ -623,3 +706,68 @@ def normalize_array(arr, low_clip, high_clip):
     normalized_arr = (clipped_arr - low_value) / (high_value - low_value)
     
     return normalized_arr
+
+
+    '''
+    This is a helper function will groom the ends (by holding values) and remove NaN's of an
+     incomplete dataset and perform a Bayesian changepoint search.
+
+     results of the search will be added to another row of the dataframe.
+
+     Really should be building a well 'object' that holds this data along with the
+     trends and correlation to other wells, but for now it is a dataframe... added to cp_Comparitor.py
+
+    '''
+
+    def return_df_add_CP_Prob(df, start, stop, log_dict=[], label='CP_Prob_', nan_method='local_average', window_size=200, segment_length=1000, **kwargs):
+        ''' Adds a probability curve for change points to a dataFrame
+    
+        Parameters:
+            df (pandas.Dataframe) : input dataFrame with a dataset mentioned in the log_dictionary 
+            log_dict (dict) :  Log dictionary
+            label (str)  : Prefix for probability curve that will be appended to the dataFrame
+        
+            **passthrough argument for replace_nans function**
+            nan_method (str) : choices ('global_average', 'local_average', 'linear_interpolation') 
+            window_size (int) : window size for calculating local averages.
+    
+            segment_length (int) : split for offline Bayesian Change Point detection,
+                                unsefult to control the computational cost of this function
+
+        Returns: None, this merely adds a curve to the input dataframe
+
+        '''
+    
+     #Keyword Args assingment
+    _prior = kwargs.get('prior') # choices are "const", "geometric", "neg_binomial"
+    _method = kwargs.get('method')  # choices are 'gauss', 'ifm' or 'full_cov'
+    _engine = kwargs.get('engine')  # choices are "numpy" or "numba"
+    _normalize = kwargs.get('normal')
+
+    #Argument Defaults
+    if _method == None:
+        _method = "full_cov"
+    if _prior == None:
+        _prior = "const"
+    if _engine == None:
+        _engine ="numba"
+    #if _normalize == False:
+    
+    print(str(df))
+    #Fill ends of incomplete df, replace NaN's with parameter method, and changepoint search with parameter segment splits
+    for log in log_dict:
+        print(' finding changepoints in '+log)
+        labl = label+log
+        df[log][start:stop] = wtool.fill_out_data_ends(df[log][start:stop].values)
+
+        df[log][start:stop] = wtool.replace_nans(df[log][start:stop].values, method=nan_method, window_size=window_size)
+        
+        changepoint_prob = cp_Tools.bayes_offline_split(df[log][start:stop].values, segment_length=segment_length, method=_method, prior=_prior, engine=_engine, normal=_normalize)
+        
+        log_index_array = df[log][start:stop].index
+        d = {labl : pd.Series(changepoint_prob, index=log_index_array)}
+        dfcp = pd.DataFrame(data=d) 
+        df = pd.concat([df, dfcp], axis=1,)
+        
+    return df
+        

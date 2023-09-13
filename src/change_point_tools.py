@@ -5,7 +5,8 @@ from scipy.signal import find_peaks
 from   scipy.stats import norm
 from   scipy.special import logsumexp
 import sdt.changepoint as sdt_cp
-import numba
+#import numba
+
 
 
 
@@ -200,7 +201,8 @@ def bayes_offline_sdt(data, **kwargs):
     _normalize = kwargs.get('normal')
     _p = kwargs.get('p')
     _k = kwargs.get('k')
-    
+
+
     #Default arguments
     if _method == None:
         _method = "full_cov"
@@ -209,7 +211,7 @@ def bayes_offline_sdt(data, **kwargs):
     if _past == None:
         _past = 20
     if _normalize == True:
-        data = normalize_array(data, 0, 0)
+        data = normalize_array(data, 1, 1)
 
 
     #Prior parameters and defaults
