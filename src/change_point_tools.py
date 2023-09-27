@@ -201,7 +201,8 @@ def bayes_offline_sdt(data, **kwargs):
     _normalize = kwargs.get('normal')
     _p = kwargs.get('p')
     _k = kwargs.get('k')
-
+    _high_clip = kwargs.get('high_clip')
+    _low_clip = kwargs.get('low_clip')
 
     #Default arguments
     if _method == None:
@@ -210,8 +211,12 @@ def bayes_offline_sdt(data, **kwargs):
         _engine ="numba"
     if _past == None:
         _past = 20
+    if _high_clip == None:
+        _high_clip = 0
+    if _low_clip == None:
+        _low_clip = 0
     if _normalize == True:
-        data = normalize_array(data, 1, 1)
+        data = normalize_array(data, _low_clip, _high_clip)
 
 
     #Prior parameters and defaults

@@ -522,7 +522,7 @@ def prob_cpCorr(cpComparitee, cpComparitor, **kwargs):
     #unique, counts = np.unique(CumulativeProb, return_counts=True)
     
     V = QumeProb.sum(axis=0)
-    
+    #V = QumeProb.sum(axis=0)/len(QumeProb[:,0])
     return V #, QumeProb
 
 
@@ -707,22 +707,18 @@ def normalize_array(arr, low_clip, high_clip):
     
     return normalized_arr
 
+def return_df_add_CP_Prob(df, start, stop, log_dict=[], label='CP_Prob_', nan_method='local_average', window_size=200, segment_length=1000, **kwargs):
+    ''' Adds a probability curve for change points to a dataFrame
 
-    '''
-    This is a helper function will groom the ends (by holding values) and remove NaN's of an
-     incomplete dataset and perform a Bayesian changepoint search.
+            This is a helper function will groom the ends (by holding values) and remove NaN's of an
+            incomplete dataset and perform a Bayesian changepoint search.
 
-     results of the search will be added to another row of the dataframe.
+            results of the search will be added to another row of the dataframe.
 
-     Really should be building a well 'object' that holds this data along with the
-     trends and correlation to other wells, but for now it is a dataframe... added to cp_Comparitor.py
-
-    '''
-
-    def return_df_add_CP_Prob(df, start, stop, log_dict=[], label='CP_Prob_', nan_method='local_average', window_size=200, segment_length=1000, **kwargs):
-        ''' Adds a probability curve for change points to a dataFrame
+            Really should be building a well 'object' that holds this data along with the
+            trends and correlation to other wells, but for now it is a dataframe... added to cp_Comparitor.py
     
-        Parameters:
+            Parameters:
             df (pandas.Dataframe) : input dataFrame with a dataset mentioned in the log_dictionary 
             log_dict (dict) :  Log dictionary
             label (str)  : Prefix for probability curve that will be appended to the dataFrame
@@ -734,12 +730,15 @@ def normalize_array(arr, low_clip, high_clip):
             segment_length (int) : split for offline Bayesian Change Point detection,
                                 unsefult to control the computational cost of this function
 
-        Returns: None, this merely adds a curve to the input dataframe
+            Returns:  dataframe
 
-        '''
+        
+            
+
+    '''
     
-     #Keyword Args assingment
-    _prior = kwargs.get('prior') # choices are "const", "geometric", "neg_binomial"
+    #Keyword Args assingment
+    _prior = kwargs.get('prior')    # choices are "const", "geometric", "neg_binomial"
     _method = kwargs.get('method')  # choices are 'gauss', 'ifm' or 'full_cov'
     _engine = kwargs.get('engine')  # choices are "numpy" or "numba"
     _normalize = kwargs.get('normal')
@@ -753,10 +752,10 @@ def normalize_array(arr, low_clip, high_clip):
         _engine ="numba"
     #if _normalize == False:
     
-    print(str(df))
+    #print(str(df))
     #Fill ends of incomplete df, replace NaN's with parameter method, and changepoint search with parameter segment splits
     for log in log_dict:
-        print(' finding changepoints in '+log)
+        print('finding changepoints in '+log)
         labl = label+log
         df[log][start:stop] = wtool.fill_out_data_ends(df[log][start:stop].values)
 
@@ -770,4 +769,3 @@ def normalize_array(arr, low_clip, high_clip):
         df = pd.concat([df, dfcp], axis=1,)
         
     return df
-        
